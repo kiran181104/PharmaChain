@@ -36,7 +36,7 @@ class BlockchainService:
             self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
             
             # Check connection
-            if not self.w3.isConnected():   # note: Web3 7.x uses is_connected()
+            if not self.w3.is_connected():
                 raise ConnectionError("Failed to connect to blockchain")
             
             logger.info(f"Connected to blockchain at {settings.BLOCKCHAIN_PROVIDER_URL}")
