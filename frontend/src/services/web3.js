@@ -202,18 +202,67 @@ class Web3Service {
   }
 
   /**
+   * Check if batch exists on blockchain
+   */
+  async doesBatchExist(batchId) {
+    try {
+      if (!this.contract) {
+        await this.init();
+        if (!this.contract) {
+          return false;
+        }
+      }
+
+      const exists = await this.contract.methods.doesBatchExist(batchId).call();
+      return exists;
+    } catch (error) {
+      console.error('doesBatchExist error:', error);
+      return false;
+    }
+  }
+
+  /**
    * Verify drug on blockchain
    */
   async verifyDrug(batchId) {
-    if (!this.contract) {
-      throw new Error('Contract not initialized');
-    }
-
     try {
+      if (!this.contract) {
+        // Try to initialize if not set
+        await this.init();
+        if (!this.contract) {
+          return {
+            isGenuine: false,
+            drugName: null,
+            manufacturer: null,
+            compositionHash: null,
+            manufactureDate: 0,
+            expiryDate: 0,
+            currentOwner: null,
+            transferCount: 0,
+            error: 'Contract not initialized'
+          };
+        }
+      }
+
+      const exists = await this.doesBatchExist(batchId);
+      if (!exists) {
+        return {
+          isGenuine: false,
+          drugName: null,
+          manufacturer: null,
+          compositionHash: null,
+          manufactureDate: 0,
+          expiryDate: 0,
+          currentOwner: null,
+          transferCount: 0,
+          error: 'Drug batch does not exist on-chain'
+        };
+      }
+
       const result = await this.contract.methods
         .verifyDrug(batchId)
         .call();
-      
+
       return {
         isGenuine: result[0],
         drugName: result[1],
@@ -226,7 +275,17 @@ class Web3Service {
       };
     } catch (error) {
       console.error('Verify drug error:', error);
-      throw error;
+      return {
+        isGenuine: false,
+        drugName: null,
+        manufacturer: null,
+        compositionHash: null,
+        manufactureDate: 0,
+        expiryDate: 0,
+        currentOwner: null,
+        transferCount: 0,
+        error: error.message || 'Blockchain call failed'
+      };
     }
   }
 

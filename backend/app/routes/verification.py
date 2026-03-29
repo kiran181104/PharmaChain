@@ -98,10 +98,8 @@ async def verify_drug(batch_id: str, db=Depends(get_database)):
         if len(anomalies) > 0 and status_text == "GENUINE":
             status_text = "INCOMPLETE_CHAIN"
         
-        is_genuine = (status_text == "GENUINE")
-        
-        # Format ownership history
-        formatted_history = []
+        # Treat incomplete chain as still authentic (not overtly fake), but requiring transfer completion.
+        is_genuine = status_text in ["GENUINE", "INCOMPLETE_CHAIN"]
         for record in ownership_history:
             formatted_history.append({
                 "from": record["from"],

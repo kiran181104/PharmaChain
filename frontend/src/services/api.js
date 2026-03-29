@@ -78,6 +78,11 @@ export const getDrugInfo = async (batchId) => {
   return response.data;
 };
 
+export const getAllDrugs = async () => {
+  const response = await api.get('/api/drugs/all');
+  return response.data;
+};
+
 // ============ Verification APIs ============
 
 export const verifyDrug = async (batchId) => {

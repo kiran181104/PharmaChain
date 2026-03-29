@@ -93,6 +93,18 @@ class DrugRegistrationResponse(BaseModel):
     transactionHash: Optional[str] = None
 
 
+class DrugInfo(BaseModel):
+    """Schema for drug information"""
+    batchId: str
+    drugName: str
+    fullComposition: dict
+    compositionHash: str
+    manufacturer: str
+    manufactureDate: int
+    expiryDate: int
+    registrationTimestamp: datetime
+
+
 # ============ Ownership Transfer Schemas ============
 
 class OwnershipTransferRequest(BaseModel):

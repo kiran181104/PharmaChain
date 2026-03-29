@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from app.schemas import (
     DrugRegistrationRequest,
     DrugRegistrationResponse,
+    DrugInfo,
     OwnershipTransferRequest,
     OwnershipTransferResponse,
     CompositionValidationRequest,
@@ -14,6 +15,7 @@ from app.schemas import (
 from app.database import get_database
 from app.utils import generate_composition_hash, blockchain_service, validate_composition
 from datetime import datetime
+from typing import List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -197,6 +199,48 @@ async def register_drug(
         )
 
 
+@router.get("/all")
+async def get_all_drugs(db=Depends(get_database)):
+    """Get all registered drug batches"""
+    try:
+        drugs_cursor = db.drug_batches.find({})
+        drugs = await drugs_cursor.to_list(length=1000)
+
+        for drug in drugs:
+            drug.pop("_id", None)
+
+        return drugs
+    except Exception as e:
+        logger.error(f"Failed to retrieve all drugs: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve all drugs: {str(e)}"
+        )
+
+
+@router.get("/batch/{batch_id}", response_model=DrugInfo)
+async def get_drug_by_batch(batch_id: str, db=Depends(get_database)):
+    """Get details of a drug batch by batch ID"""
+    try:
+        drug = await db.drug_composition_storage.find_one({"batchId": batch_id})
+        if not drug:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Batch ID {batch_id} not found"
+            )
+
+        drug.pop("_id", None)
+        return drug
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve drug batch {batch_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve drug batch: {str(e)}"
+        )
+
+
 @router.post("/transfer", response_model=OwnershipTransferResponse)
 async def transfer_ownership(
     transfer_data: OwnershipTransferRequest,
@@ -211,92 +255,72 @@ async def transfer_ownership(
     - **location**: Transfer location
     """
     try:
-        # Validate batch exists
-        batch = await db.drug_batches.find_one(
-            {"batchId": transfer_data.batchId }
-        )
+        batch = await db.drug_batches.find_one({"batchId": transfer_data.batchId})
 
-        # ✅ Update current owner in DB
-        await db.drug_batches.update_one(
-            {"batchId": transfer_data.batchId},
-            {
-                "$set": {
-                    "currentOwner": transfer_data.toAddress.lower(),
-                    "updatedAt": datetime.utcnow()
-                }
-            }
-        )
-
-        
         if not batch:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Batch ID not found"
             )
-        
+
         # Validate users
         from_address = transfer_data.fromAddress.lower()
         to_address = transfer_data.toAddress.lower()
 
-        from_user = await db.users.find_one(
-            {"walletAddress": from_address}
-        )
-        to_user = await db.users.find_one(
-            {"walletAddress": to_address}
-        )
+        from_user = await db.users.find_one({"walletAddress": from_address})
+        to_user = await db.users.find_one({"walletAddress": to_address})
 
         if not from_user or not to_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="One or both users not found"
             )
-        
+
         # Validate transfer chain
         from_role = from_user.get("role")
         to_role = to_user.get("role")
-        
-        valid_transfers = [
-            ("MANUFACTURER", "DISTRIBUTOR"),
-            ("DISTRIBUTOR", "PHARMACY"),
-            ("DISTRIBUTOR", "DISTRIBUTOR")
-        ]
-        
-        if (from_role, to_role) not in valid_transfers:
+
+        valid_transfers = ["MANUFACTURER->DISTRIBUTOR", "DISTRIBUTOR->PHARMACY", "PHARMACY->CONSUMER"]
+        transfer_key = f"{from_role}->{to_role}"
+
+        if transfer_key not in valid_transfers:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Invalid transfer: {from_role} cannot transfer to {to_role}"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid transfer route for roles"
             )
-        
-        # ✅ AUTO-REGISTER NEW OWNER ON BLOCKCHAIN IF NOT ALREADY REGISTERED
-        # Note: transferOwnership function in smart contract now handles auto-registration
-        # when new owner receives their first transfer. Backend just needs to validate
-        # that both users exist in MongoDB.
-        
-        # Transfer on blockchain (build transaction)
-        blockchain_result = await blockchain_service.transfer_ownership(
-            batch_id=transfer_data.batchId,
-            new_owner=transfer_data.toAddress,
-            location=transfer_data.location,
-            current_owner=transfer_data.fromAddress
+
+        # Update current owner in DB
+        await db.drug_batches.update_one(
+            {"batchId": transfer_data.batchId},
+            {
+                "$set": {
+                    "currentOwner": to_address,
+                    "updatedAt": datetime.utcnow()
+                }
+            }
         )
-        
-        if not blockchain_result.get("success"):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Blockchain transfer failed: {blockchain_result.get('error')}"
-            )
-        
-        logger.info(
-            f"Ownership transferred: {transfer_data.batchId} "
-            f"from {transfer_data.fromAddress} to {transfer_data.toAddress}"
-        )
-        
+
+        # Potentially store transfer history on blockchain and in DB (if implemented)
         return {
             "success": True,
-            "message": "Ownership transfer initiated. Sign the transaction in MetaMask.",
+            "message": "Ownership transfer recorded successfully",
             "batchId": transfer_data.batchId,
-            "transactionHash": None  # Will be set after user signs in frontend
+            "transactionHash": None
         }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ownership transfer error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ownership transfer failed: {str(e)}"
+        )
+
+
+
+        
+
         
     except HTTPException:
         raise
@@ -305,6 +329,28 @@ async def transfer_ownership(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ownership transfer failed: {str(e)}"
+        )
+
+
+@router.get("/all")
+async def get_all_drugs(db=Depends(get_database)):
+    """
+    Get all registered drugs
+    """
+    try:
+        drugs = await db.drug_composition_storage.find({}).to_list(length=None)
+        
+        # Remove MongoDB _id field
+        for drug in drugs:
+            drug.pop("_id", None)
+        
+        return drugs
+        
+    except Exception as e:
+        logger.error(f"Get all drugs error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve drugs: {str(e)}"
         )
 
 

@@ -35,8 +35,14 @@ class BlockchainService:
             from web3.middleware import geth_poa_middleware
             self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
             
-            # Check connection
-            if not self.w3.is_connected():
+            # Check connection (handle both Web3.py version differences)
+            try:
+                is_connected = self.w3.is_connected()
+            except AttributeError:
+                # Fallback for older Web3 versions
+                is_connected = self.w3.isConnected()
+            
+            if not is_connected:
                 raise ConnectionError("Failed to connect to blockchain")
             
             logger.info(f"Connected to blockchain at {settings.BLOCKCHAIN_PROVIDER_URL}")
@@ -74,98 +80,43 @@ class BlockchainService:
     def _get_contract_abi(self) -> List[Dict]:
         """
         Get contract ABI
-        In production, load this from a JSON file generated during contract deployment
+        Load from the truffle build file
         """
-        # This is a simplified ABI - in production, use the full ABI from truffle build
-        return [
-            {
-                "inputs": [
-                    {"internalType": "address", "name": "_walletAddress", "type": "address"}
-                ],
-                "name": "getUser",
-                "outputs": [
-                    {"internalType": "address", "name": "walletAddress", "type": "address"},
-                    {"internalType": "uint8", "name": "role", "type": "uint8"},
-                    {"internalType": "string", "name": "name", "type": "string"},
-                    {"internalType": "bool", "name": "isRegistered", "type": "bool"},
-                    {"internalType": "uint256", "name": "registrationTimestamp", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "address", "name": "_walletAddress", "type": "address"},
-                    {"internalType": "uint8", "name": "_role", "type": "uint8"},
-                    {"internalType": "string", "name": "_name", "type": "string"}
-                ],
-                "name": "registerUser",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "string", "name": "_batchId", "type": "string"},
-                    {"internalType": "string", "name": "_drugName", "type": "string"},
-                    {"internalType": "string", "name": "_compositionHash", "type": "string"},
-                    {"internalType": "uint256", "name": "_manufactureDate", "type": "uint256"},
-                    {"internalType": "uint256", "name": "_expiryDate", "type": "uint256"}
-                ],
-                "name": "registerDrug",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "string", "name": "_batchId", "type": "string"},
-                    {"internalType": "address", "name": "_newOwner", "type": "address"},
-                    {"internalType": "string", "name": "_location", "type": "string"}
-                ],
-                "name": "transferOwnership",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "string", "name": "_batchId", "type": "string"}],
-                "name": "verifyDrug",
-                "outputs": [
-                    {"internalType": "bool", "name": "isGenuine", "type": "bool"},
-                    {"internalType": "string", "name": "drugName", "type": "string"},
-                    {"internalType": "address", "name": "manufacturer", "type": "address"},
-                    {"internalType": "string", "name": "compositionHash", "type": "string"},
-                    {"internalType": "uint256", "name": "manufactureDate", "type": "uint256"},
-                    {"internalType": "uint256", "name": "expiryDate", "type": "uint256"},
-                    {"internalType": "address", "name": "currentOwner", "type": "address"},
-                    {"internalType": "uint256", "name": "transferCount", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "string", "name": "_batchId", "type": "string"}],
-                "name": "getDrugHistory",
-                "outputs": [
-                    {
-                        "components": [
-                            {"internalType": "address", "name": "from", "type": "address"},
-                            {"internalType": "address", "name": "to", "type": "address"},
-                            {"internalType": "uint256", "name": "timestamp", "type": "uint256"},
-                            {"internalType": "string", "name": "location", "type": "string"},
-                            {"internalType": "uint8", "name": "fromRole", "type": "uint8"},
-                            {"internalType": "uint8", "name": "toRole", "type": "uint8"}
-                        ],
-                        "internalType": "struct DrugTraceability.OwnershipRecord[]",
-                        "name": "",
-                        "type": "tuple[]"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ]
+        import json
+        import os
+        
+        try:
+            # Path to the contract build file
+            contract_build_path = os.path.join(
+                os.path.dirname(__file__), 
+                '..', '..', '..', 'blockchain', 'build', 'contracts', 'DrugTraceability.json'
+            )
+            
+            with open(contract_build_path, 'r') as f:
+                contract_data = json.load(f)
+                return contract_data['abi']
+                
+        except Exception as e:
+            logger.error(f"Failed to load contract ABI: {str(e)}")
+            # Fallback to minimal ABI if file not found
+            return [
+                {
+                    "inputs": [{"internalType": "string", "name": "_batchId", "type": "string"}],
+                    "name": "verifyDrug",
+                    "outputs": [
+                        {"internalType": "bool", "name": "isGenuine", "type": "bool"},
+                        {"internalType": "string", "name": "drugName", "type": "string"},
+                        {"internalType": "address", "name": "manufacturer", "type": "address"},
+                        {"internalType": "string", "name": "compositionHash", "type": "string"},
+                        {"internalType": "uint256", "name": "manufactureDate", "type": "uint256"},
+                        {"internalType": "uint256", "name": "expiryDate", "type": "uint256"},
+                        {"internalType": "address", "name": "currentOwner", "type": "address"},
+                        {"internalType": "uint256", "name": "transferCount", "type": "uint256"}
+                    ],
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ]
     
     async def register_user(
         self,

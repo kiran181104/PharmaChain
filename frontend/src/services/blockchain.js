@@ -94,13 +94,50 @@ class BlockchainService {
   async verifyDrugComplete(batchId) {
     try {
       // Get verification data from backend (includes composition)
-      const backendData = await api.verifyDrug(batchId);
+      let backendData = null;
+      try {
+        backendData = await api.verifyDrug(batchId);
+      } catch (error) {
+        console.error('Backend verifyDrug call failed:', error);
+        backendData = {
+          isGenuine: false,
+          status: 'FAKE',
+          message: 'Backend verification failed',
+          anomalies: ['Backend service unavailable']
+        };
+      }
 
-      // Get blockchain data
-      const blockchainData = await web3Service.verifyDrug(batchId);
+      const message = (backendData?.message || '').toLowerCase();
+      const missingOnChain = message.includes('not found on blockchain');
+      const missingInDb = message.includes('not found in database');
+
+      // If backend reports missing batch, avoid on-chain call to prevent revert JSON-RPC errors
+      if (missingOnChain || missingInDb) {
+        return {
+          ...backendData,
+          blockchainVerification: null,
+          ownershipHistory: [],
+          verifiedAt: new Date().toISOString()
+        };
+      }
+
+      // Get blockchain data (some calls may still fail; catch and proceed safely)
+      let blockchainData = null;
+      try {
+        blockchainData = await web3Service.verifyDrug(batchId);
+      } catch (error) {
+        console.error('Blockchain verifyDrug call failed:', error);
+        blockchainData = { error: error.message || 'Blockchain call failed' };
+      }
 
       // Get ownership history
-      const history = await web3Service.getDrugHistory(batchId);
+      let history = [];
+      try {
+        history = await web3Service.getDrugHistory(batchId);
+      } catch (error) {
+        console.error('Blockchain getDrugHistory call failed:', error);
+        history = [];
+      }
 
       // Combine all data
       return {
