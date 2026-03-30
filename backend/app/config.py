@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     PRIVATE_KEY: str = ""
     
     # CORS Configuration
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # In production, this should be locked down. Empty means allow all origins via app.main fallback.
+    CORS_ORIGINS: List[str] = []
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"

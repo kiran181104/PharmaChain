@@ -85,7 +85,10 @@ const RoleSelection = ({ account, onSelectRole, error: propError }) => {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                setLocalError('');
+              }}
               placeholder="Enter your name or organization name"
               required
               disabled={loading}
@@ -99,7 +102,12 @@ const RoleSelection = ({ account, onSelectRole, error: propError }) => {
                 <div
                   key={role.value}
                   className={`role-card ${selectedRole === role.value ? 'selected' : ''}`}
-                  onClick={() => !loading && setSelectedRole(role.value)}
+                  onClick={() => {
+                    if (!loading) {
+                      setSelectedRole(role.value);
+                      setLocalError('');
+                    }
+                  }}
                 >
                   <div className="role-icon">{role.icon}</div>
                   <div className="role-label">{role.label}</div>

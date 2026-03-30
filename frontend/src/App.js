@@ -114,7 +114,12 @@ function App() {
       setLoading(false);
     } catch (error) {
       console.error('Failed to register user:', error);
-      setError('Failed to register: ' + (error.response?.data?.detail || error.message));
+      const networkMsg = error.message?.includes('Network Error') ?
+        `Backend unreachable at ${process.env.REACT_APP_API_URL || 'http://localhost:8000'}; check backend server and CORS` : null;
+      setError(
+        networkMsg ||
+        'Failed to register: ' + (error.response?.data?.detail || error.message || 'Unknown error')
+      );
       setLoading(false);
     }
   };
