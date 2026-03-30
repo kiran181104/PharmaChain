@@ -11,6 +11,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
+def check_database_connection():
+    """Check if database is available"""
+    db = get_database()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection not available"
+        )
+    return db
+
+
 @router.post("/register", response_model=SuccessResponse)
 async def register_user(user: UserCreate, db=Depends(get_database)):
     """
@@ -21,6 +32,13 @@ async def register_user(user: UserCreate, db=Depends(get_database)):
     - **name**: User or organization name
     """
     try:
+        # Check database connection
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available. Please try again later."
+            )
+        
         # Check if user already exists
         existing_user = await db.users.find_one({"walletAddress": user.walletAddress})
         
@@ -70,6 +88,13 @@ async def get_user(wallet_address: str, db=Depends(get_database)):
     Get user details by wallet address
     """
     try:
+        # Check database connection
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available. Please try again later."
+            )
+        
         user = await db.users.find_one({"walletAddress": wallet_address})
         
         if not user:
