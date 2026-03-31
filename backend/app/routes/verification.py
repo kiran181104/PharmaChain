@@ -80,6 +80,21 @@ async def verify_drug(batch_id: str, db=Depends(get_database)):
         
         # Verify on blockchain
         blockchain_result = await blockchain_service.verify_drug(batch_id)
+        
+        if not blockchain_result.get("success"):
+            return {
+                "isGenuine": False,
+                "status": "FAKE",
+                "batchId": batch_id,
+                "drugName": "Unknown",
+                "manufacturer": "Unknown",
+                "compositionHash": "",
+                "currentOwner": "",
+                "manufactureDate": 0,
+                "expiryDate": 0,
+                "transferCount": 0,
+                "ownershipHistory": [],
+                "composition": None,
                 "anomalies": ["Batch ID not found on blockchain"]
             }
         
