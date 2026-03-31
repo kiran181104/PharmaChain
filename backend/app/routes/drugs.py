@@ -136,21 +136,25 @@ async def register_drug(
         # Generate composition hash
         composition_hash = generate_composition_hash(drug_data.composition.dict())
         
-        # Register on blockchain (build transaction)
-        blockchain_result = await blockchain_service.register_drug(
-            batch_id=drug_data.batchId,
-            drug_name=drug_data.drugName,
-            composition_hash=composition_hash,
-            manufacture_date=drug_data.manufactureDate,
-            expiry_date=drug_data.expiryDate,
-            manufacturer_address=drug_data.manufacturerAddress
-        )
+        # Register on blockchain (build transaction) - optional
+        blockchain_available = blockchain_service.is_connected()
+        blockchain_result = None
         
-        if not blockchain_result.get("success"):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Blockchain registration failed: {blockchain_result.get('error')}"
+        if blockchain_available:
+            blockchain_result = await blockchain_service.register_drug(
+                batch_id=drug_data.batchId,
+                drug_name=drug_data.drugName,
+                composition_hash=composition_hash,
+                manufacture_date=drug_data.manufactureDate,
+                expiry_date=drug_data.expiryDate,
+                manufacturer_address=drug_data.manufacturerAddress
             )
+            
+            if not blockchain_result.get("success"):
+                logger.warning(f"Blockchain registration failed: {blockchain_result.get('error')}")
+                blockchain_available = False
+        else:
+            logger.warning("Blockchain service unavailable - registering drug in database only")
         
         # Store full composition in MongoDB (off-chain)
         composition_doc = {
@@ -161,11 +165,13 @@ async def register_drug(
             "manufacturer": drug_data.manufacturerAddress,
             "manufactureDate": drug_data.manufactureDate,
             "expiryDate": drug_data.expiryDate,
-            "registrationTimestamp": datetime.utcnow()
+            "registrationTimestamp": datetime.utcnow(),
+            "blockchainRegistered": blockchain_available
         }
         
         await db.drug_composition_storage.insert_one(composition_doc)
-        # ✅ Store batch master record
+        
+        # Store batch master record
         await db.drug_batches.insert_one({
             "batchId": drug_data.batchId,
             "drugName": drug_data.drugName,
@@ -175,18 +181,26 @@ async def register_drug(
             "manufactureDate": drug_data.manufactureDate,
             "expiryDate": drug_data.expiryDate,
             "createdAt": datetime.utcnow(),
-            "updatedAt": datetime.utcnow()
+            "updatedAt": datetime.utcnow(),
+            "blockchainRegistered": blockchain_available
         })
 
         
-        logger.info(f"Drug registered: {drug_data.batchId} by {drug_data.manufacturerAddress}")
+        logger.info(f"Drug registered: {drug_data.batchId} by {drug_data.manufacturerAddress} (blockchain: {blockchain_available})")
+        
+        message = "Drug registered successfully"
+        if not blockchain_available:
+            message += " (Database only - blockchain unavailable)"
+        else:
+            message += ". Sign the transaction in MetaMask."
         
         return {
             "success": True,
-            "message": "Drug registered successfully. Sign the transaction in MetaMask.",
+            "message": message,
             "batchId": drug_data.batchId,
             "compositionHash": composition_hash,
-            "transactionHash": None  # Will be set after user signs in frontend
+            "transactionHash": None,  # Will be set after user signs in frontend
+            "blockchainAvailable": blockchain_available
         }
         
     except HTTPException:

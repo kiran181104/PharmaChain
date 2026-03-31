@@ -32,22 +32,54 @@ async def verify_drug(batch_id: str, db=Depends(get_database)):
     - INCOMPLETE_CHAIN: Missing ownership transfers
     """
     try:
+        # Check if blockchain is available
+        blockchain_available = blockchain_service.is_connected()
+        
+        if not blockchain_available:
+            # Fallback to database-only verification
+            batch = await db.drug_batches.find_one({"batchId": batch_id})
+            composition = await db.drug_composition_storage.find_one({"batchId": batch_id})
+            
+            if not batch or not composition:
+                return {
+                    "isGenuine": False,
+                    "status": "FAKE",
+                    "batchId": batch_id,
+                    "drugName": "Unknown",
+                    "manufacturer": "Unknown",
+                    "compositionHash": "",
+                    "currentOwner": "",
+                    "manufactureDate": 0,
+                    "expiryDate": 0,
+                    "transferCount": 0,
+                    "ownershipHistory": [],
+                    "composition": composition.get("fullComposition") if composition else None,
+                    "anomalies": ["Blockchain service unavailable - limited verification"]
+                }
+            
+            # Check expiry
+            import time
+            current_time = int(time.time())
+            is_expired = current_time > composition.get("expiryDate", 0)
+            
+            return {
+                "isGenuine": not is_expired,
+                "status": "EXPIRED" if is_expired else "GENUINE",
+                "batchId": batch_id,
+                "drugName": composition.get("drugName", "Unknown"),
+                "manufacturer": composition.get("manufacturer", "Unknown"),
+                "compositionHash": composition.get("compositionHash", ""),
+                "currentOwner": batch.get("currentOwner", ""),
+                "manufactureDate": composition.get("manufactureDate", 0),
+                "expiryDate": composition.get("expiryDate", 0),
+                "transferCount": 0,  # Can't get from blockchain
+                "ownershipHistory": [],
+                "composition": composition.get("fullComposition"),
+                "anomalies": ["Blockchain service unavailable - ownership history not available"]
+            }
+        
         # Verify on blockchain
         blockchain_result = await blockchain_service.verify_drug(batch_id)
-        
-        if not blockchain_result.get("success"):
-            return {
-                "isGenuine": False,
-                "status": "FAKE",
-                "batchId": batch_id,
-                "drugName": "Unknown",
-                "manufacturer": "Unknown",
-                "compositionHash": "",
-                "currentOwner": "",
-                "manufactureDate": 0,
-                "expiryDate": 0,
-                "transferCount": 0,
-                "ownershipHistory": [],
                 "anomalies": ["Batch ID not found on blockchain"]
             }
         
@@ -140,6 +172,15 @@ async def get_ownership_history(batch_id: str):
     Get detailed ownership history for a drug batch
     """
     try:
+        # Check if blockchain is available
+        if not blockchain_service.is_connected():
+            return {
+                "success": False,
+                "batchId": batch_id,
+                "history": [],
+                "message": "Blockchain service unavailable - ownership history not available"
+            }
+        
         history_result = await blockchain_service.get_drug_history(batch_id)
         
         if not history_result.get("success"):

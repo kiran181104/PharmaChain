@@ -43,7 +43,9 @@ class BlockchainService:
                 is_connected = self.w3.isConnected()
             
             if not is_connected:
-                raise ConnectionError("Failed to connect to blockchain")
+                logger.warning("Failed to connect to blockchain - service will be unavailable")
+                self.w3 = None
+                return
             
             logger.info(f"Connected to blockchain at {settings.BLOCKCHAIN_PROVIDER_URL}")
             
@@ -55,8 +57,14 @@ class BlockchainService:
                 self._load_contract()
             
         except Exception as e:
-            logger.error(f"Blockchain initialization error: {str(e)}")
-            raise
+    def is_connected(self) -> bool:
+        """Check if blockchain connection is available"""
+        return self.w3 is not None and self.contract is not None
+    
+    def _ensure_connection(self):
+        """Ensure blockchain connection is available, raise error if not"""
+        if not self.is_connected():
+            raise ConnectionError("Blockchain service is not available. Please check blockchain provider configuration.")
 
     
     def _load_contract(self):
@@ -136,6 +144,9 @@ class BlockchainService:
             Transaction receipt dictionary
         """
         try:
+            # Check blockchain connection
+            self._ensure_connection()
+            
             # Map role string to enum value
             role_map = {
                 "MANUFACTURER": 1,
@@ -209,6 +220,9 @@ class BlockchainService:
             True if registered, False otherwise
         """
         try:
+            # Check blockchain connection
+            self._ensure_connection()
+            
             result = self.contract.functions.getUser(
                 Web3.toChecksumAddress(wallet_address)
             ).call()
@@ -244,6 +258,9 @@ class BlockchainService:
             Transaction receipt dictionary
         """
         try:
+            # Check blockchain connection
+            self._ensure_connection()
+            
             # Build transaction
             transaction = self.contract.functions.registerDrug(
                 batch_id,
@@ -293,6 +310,9 @@ class BlockchainService:
             Transaction receipt dictionary
         """
         try:
+            # Check blockchain connection
+            self._ensure_connection()
+            
             # Build transaction
             transaction = self.contract.functions.transferOwnership(
                 batch_id,
@@ -331,6 +351,9 @@ class BlockchainService:
             Verification result dictionary
         """
         try:
+            # Check blockchain connection
+            self._ensure_connection()
+            
             # Call contract view function
             result = self.contract.functions.verifyDrug(batch_id).call()
             
@@ -364,6 +387,9 @@ class BlockchainService:
             Ownership history list
         """
         try:
+            # Check blockchain connection
+            self._ensure_connection()
+            
             # Call contract view function
             history = self.contract.functions.getDrugHistory(batch_id).call()
             
