@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { getAuditStatistics, getAnomalies } from '../services/api';
+import { getAuditStatistics, getAnomalies, getAllUsers } from '../services/api';
 import './Dashboard.css';
 
 const RegulatorDashboard = ({ account }) => {
   const [stats, setStats] = useState(null);
   const [anomalies, setAnomalies] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,12 +14,14 @@ const RegulatorDashboard = ({ account }) => {
 
   const loadDashboardData = async () => {
     try {
-      const [statsData, anomaliesData] = await Promise.all([
+      const [statsData, anomaliesData, usersData] = await Promise.all([
         getAuditStatistics(),
-        getAnomalies()
+        getAnomalies(),
+        getAllUsers()
       ]);
       setStats(statsData);
       setAnomalies(anomaliesData);
+      setUsers(usersData || []);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -80,6 +83,32 @@ const RegulatorDashboard = ({ account }) => {
                     <td>{item.drugName}</td>
                     <td>{item.anomalyType}</td>
                     <td>{item.ownershipCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {users && users.length > 0 && (
+          <div className="anomalies-table">
+            <h3>Registered Users</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Wallet Address</th>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Registered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user, index) => (
+                  <tr key={index}>
+                    <td>{user.walletAddress}</td>
+                    <td>{user.name || '-'}</td>
+                    <td>{user.role}</td>
+                    <td>{user.isRegistered ? 'Yes' : 'No'}</td>
                   </tr>
                 ))}
               </tbody>
