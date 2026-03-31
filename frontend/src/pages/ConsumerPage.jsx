@@ -46,26 +46,6 @@ const ConsumerPage = ({ account }) => {
       </div>
     </div>
   );
-
-          <div className="status-guide">
-            <h4>Status Guide:</h4>
-            <div className="status-item">
-              <span className="status-badge-sample genuine">✓ GENUINE</span>
-              <span>Drug is authentic and safe</span>
-            </div>
-            <div className="status-item">
-              <span className="status-badge-sample fake">✗ FAKE</span>
-              <span>Drug verification failed - DO NOT USE</span>
-            </div>
-            <div className="status-item">
-              <span className="status-badge-sample expired">⚠ EXPIRED</span>
-              <span>Drug has passed expiry date</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 export default ConsumerPage;
