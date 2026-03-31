@@ -56,9 +56,15 @@ async def get_audit_statistics(db=Depends(get_database)):
                     if verification.get("transferCount", 0) < 2:
                         drugs_with_anomalies += 1
                 else:
+                    error_msg = verification.get("error", "")
+                    if "service unavailable" in error_msg.lower() or "cannot connect" in error_msg.lower() or "connection" in error_msg.lower():
+                        # Skip anomaly when blockchain is temporarily unavailable
+                        continue
                     drugs_with_anomalies += 1
-            except:
-                drugs_with_anomalies += 1
+            except Exception as e:
+                # If blockchain is unreachable, continue and don't count as anomaly.
+                logger.warning(f"Blockchain check failed for {batch_id}: {str(e)}")
+                continue
         
         return {
             "totalDrugs": total_drugs_db,
@@ -130,7 +136,12 @@ async def get_drugs_with_anomalies(db=Depends(get_database)):
                             "currentOwner": verification.get("currentOwner", "Unknown")
                         })
                 else:
-                    # Blockchain verification failed
+                    # Skip marking as anomaly on blockchain service unavailability
+                    error_msg = verification.get("error", "")
+                    if "service unavailable" in error_msg.lower() or "cannot connect" in error_msg.lower() or "connection" in error_msg.lower():
+                        logger.info(f"Blockchain unavailable, skipping anomaly for {batch_id}: {error_msg}")
+                        continue
+
                     anomalous_drugs.append({
                         "batchId": batch_id,
                         "hasAnomalies": True,
