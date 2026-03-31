@@ -29,18 +29,22 @@ const ConsumerPage = ({ account }) => {
 
           <div className="status-guide">
             <h4>Status Guide</h4>
+
             <div className="status-item">
               <span className="status-badge-sample genuine">✓ Genuine</span>
               <span>Authentic product from the supply chain.</span>
             </div>
+
             <div className="status-item">
               <span className="status-badge-sample fake">✗ Fake</span>
               <span>Counterfeit product. Do not consume.</span>
             </div>
+
             <div className="status-item">
               <span className="status-badge-sample expired">⚠ Expired</span>
               <span>Batch has exceeded expiry date.</span>
             </div>
+
           </div>
         </div>
       </div>
