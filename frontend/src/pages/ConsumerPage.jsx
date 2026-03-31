@@ -19,13 +19,33 @@ const ConsumerPage = ({ account }) => {
         <DrugVerification onVerify={handleVerify} />
 
         <div className="info-section">
-          <h3>How to Verify:</h3>
+          <h3>How to Verify</h3>
           <ol>
-            <li>Find the batch ID on your medicine package</li>
-            <li>Enter the batch ID in the form above</li>
-            <li>Click "Verify Drug"</li>
-            <li>Check the verification result</li>
+            <li>Find the batch ID on your medicine packaging.</li>
+            <li>Enter the batch ID in the form on the left.</li>
+            <li>Click "Verify Drug" and wait for results.</li>
+            <li>Read status and history to ensure authenticity.</li>
           </ol>
+
+          <div className="status-guide">
+            <h4>Status Guide</h4>
+            <div className="status-item">
+              <span className="status-badge-sample genuine">✓ Genuine</span>
+              <span>Authentic product from the supply chain.</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge-sample fake">✗ Fake</span>
+              <span>Counterfeit product. Do not consume.</span>
+            </div>
+            <div className="status-item">
+              <span className="status-badge-sample expired">⚠ Expired</span>
+              <span>Batch has exceeded expiry date.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
           <div className="status-guide">
             <h4>Status Guide:</h4>
