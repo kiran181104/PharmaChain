@@ -58,6 +58,10 @@ const RegulatorDashboard = ({ account }) => {
               <p>Drugs with Anomalies</p>
             </div>
             <div className="stat-card">
+              <h3>{stats.transferredDrugs}</h3>
+              <p>Transferred Drugs</p>
+            </div>
+            <div className="stat-card">
               <h3>{stats.expiredDrugs}</h3>
               <p>Expired Drugs</p>
             </div>
@@ -66,13 +70,13 @@ const RegulatorDashboard = ({ account }) => {
 
         {anomalies && anomalies.length > 0 && (
           <div className="anomalies-table">
-            <h3>Detected Anomalies</h3>
+            <h3>Transferred Drugs</h3>
             <table>
               <thead>
                 <tr>
                   <th>Batch ID</th>
                   <th>Drug Name</th>
-                  <th>Anomaly Type</th>
+                  <th>Status</th>
                   <th>Transfers</th>
                 </tr>
               </thead>
@@ -81,7 +85,9 @@ const RegulatorDashboard = ({ account }) => {
                   <tr key={index}>
                     <td>{item.batchId}</td>
                     <td>{item.drugName}</td>
-                    <td>{item.anomalyType}</td>
+                    <td style={{ color: item.hasAnomalies ? '#ff6b6b' : '#51cf66' }}>
+                      {item.anomalyType}
+                    </td>
                     <td>{item.ownershipCount}</td>
                   </tr>
                 ))}

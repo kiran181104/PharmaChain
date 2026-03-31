@@ -35,6 +35,7 @@ async def get_audit_statistics(db=Depends(get_database)):
         drugs = await drugs_cursor.to_list(length=1000)
         
         drugs_with_anomalies = 0
+        transferred_drugs = 0
         expired_drugs = 0
         
         import time
@@ -52,9 +53,12 @@ async def get_audit_statistics(db=Depends(get_database)):
                 verification = await blockchain_service.verify_drug(batch_id)
                 
                 if verification.get("success"):
-                    # Check for incomplete chain
-                    if verification.get("transferCount", 0) < 2:
-                        drugs_with_anomalies += 1
+                    transfer_count = verification.get("transferCount", 0)
+                    if transfer_count > 0:
+                        transferred_drugs += 1
+                        # Check for incomplete chain
+                        if transfer_count < 2:
+                            drugs_with_anomalies += 1
                 else:
                     error_msg = verification.get("error", "")
                     if "service unavailable" in error_msg.lower() or "cannot connect" in error_msg.lower() or "connection" in error_msg.lower():
@@ -71,6 +75,7 @@ async def get_audit_statistics(db=Depends(get_database)):
             "totalUsers": total_users,
             "totalTransfers": 0,  # Would need to sum from blockchain
             "drugsWithAnomalies": drugs_with_anomalies,
+            "transferredDrugs": transferred_drugs,
             "expiredDrugs": expired_drugs
         }
         
@@ -120,16 +125,18 @@ async def get_drugs_with_anomalies(db=Depends(get_database)):
                 if verification.get("success"):
                     transfer_count = verification.get("transferCount", 0)
                     
-                    # Check for incomplete chain (but only if batch has been transferred at least once)
-                    if transfer_count > 0 and transfer_count < 2 and not has_anomaly:
-                        has_anomaly = True
-                        anomaly_type = "Incomplete ownership chain"
-                    
-                    if has_anomaly:
+                    # Include all drugs that have been transferred (clear transfers)
+                    if transfer_count > 0:
+                        # Check for incomplete chain
+                        if transfer_count < 2 and not has_anomaly:
+                            has_anomaly = True
+                            anomaly_type = "Incomplete ownership chain"
+                        
+                        # Always include transferred drugs in the anomalies list
                         anomalous_drugs.append({
                             "batchId": batch_id,
-                            "hasAnomalies": True,
-                            "anomalyType": anomaly_type,
+                            "hasAnomalies": has_anomaly,
+                            "anomalyType": anomaly_type if has_anomaly else "No anomalies detected",
                             "ownershipCount": transfer_count,
                             "drugName": drug.get("drugName", "Unknown"),
                             "manufacturer": drug.get("manufacturer", "Unknown"),
