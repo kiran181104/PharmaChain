@@ -105,10 +105,24 @@ async def health_check():
     """
     Health check endpoint for monitoring
     """
+    from app.database import get_database
+    
+    db = get_database()
+    db_status = "connected" if db else "disconnected"
+    dataset_count = 0
+    
+    if db:
+        try:
+            dataset_count = await db.drug_composition_dataset.count_documents({})
+        except Exception as e:
+            logger.warning(f"Could not count dataset documents: {str(e)}")
+    
     return {
-        "status": "healthy",
-        "database": "connected",
-        "blockchain": "connected"
+        "status": "healthy" if db and dataset_count > 0 else "degraded",
+        "database": db_status,
+        "drug_dataset_seeded": dataset_count > 0,
+        "drug_dataset_count": dataset_count,
+        "blockchain": "available"
     }
 
 

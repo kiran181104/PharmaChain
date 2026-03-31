@@ -26,12 +26,12 @@
 4. Go to Variables tab and add:
 
 ```
-MONGODB_URL=mongodb+srv://your_atlas_connection_string
+MONGODB_URL=mongodb+srv://admin:kiran2004@cluster0.ddjfz6h.mongodb.net/drug_traceability?retryWrites=true&w=majority
 MONGODB_DB_NAME=drug_traceability
-BLOCKCHAIN_PROVIDER_URL=https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID
+BLOCKCHAIN_PROVIDER_URL=https://sepolia.infura.io/v3/99626a4017624961b0b70513cabb1b62
 CONTRACT_ADDRESS=0x5B3fB8Fff9A2A5b5956D8e920047d139ceCAf85D
 PRIVATE_KEY=your_private_key_for_contract_owner
-CORS_ORIGINS=["https://your-frontend.vercel.app"]
+CORS_ORIGINS=["https://drug-traceablity-system.vercel.app/"]
 SECRET_KEY=generate_random_string_32_chars
 ```
 

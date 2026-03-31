@@ -34,6 +34,14 @@ async def validate_drug_composition(
     - **composition**: Drug composition to validate
     """
     try:
+        # Check if database is available
+        if db is None:
+            logger.error("Database connection not available for composition validation")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database service temporarily unavailable"
+            )
+        
         # Fetch standard composition from dataset (exact match)
         dataset_entry = await db.drug_composition_dataset.find_one(
             {"drugName": request.drugName}
@@ -46,6 +54,9 @@ async def validate_drug_composition(
             )
 
         if not dataset_entry:
+            # Debug log the issue
+            count = await db.drug_composition_dataset.count_documents({})
+            logger.warning(f"Drug composition not found: {request.drugName} (dataset has {count} entries)")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No standard composition found for drug: {request.drugName}"
@@ -73,6 +84,43 @@ async def validate_drug_composition(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Composition validation failed: {str(e)}"
+        )
+
+
+@router.get("/dataset/all")
+async def list_standard_drugs(db=Depends(get_database)):
+    """
+    Get all standard drugs in the composition dataset
+    Useful for verifying seeding and debugging
+    """
+    try:
+        if db is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database connection not available"
+            )
+        
+        drugs = await db.drug_composition_dataset.find({}).to_list(length=None)
+        
+        # Remove MongoDB _id field and return just the drug names and compositions
+        result = [
+            {
+                "drugName": drug.get("drugName"),
+                "standardComposition": drug.get("standardComposition")
+            }
+            for drug in drugs
+        ]
+        
+        logger.info(f"Retrieved {len(result)} drugs from dataset")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve dataset: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve dataset: {str(e)}"
         )
 
 
