@@ -34,11 +34,17 @@ async def validate_drug_composition(
     - **composition**: Drug composition to validate
     """
     try:
-        # Fetch standard composition from dataset
+        # Fetch standard composition from dataset (exact match)
         dataset_entry = await db.drug_composition_dataset.find_one(
             {"drugName": request.drugName}
         )
-        
+
+        # Fall back to case-insensitive match (handles minor naming mismatch)
+        if not dataset_entry:
+            dataset_entry = await db.drug_composition_dataset.find_one(
+                {"drugName": {"$regex": f"^{request.drugName}$", "$options": "i"}}
+            )
+
         if not dataset_entry:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -119,7 +125,12 @@ async def register_drug(
         dataset_entry = await db.drug_composition_dataset.find_one(
             {"drugName": drug_data.drugName}
         )
-        
+
+        if not dataset_entry:
+            dataset_entry = await db.drug_composition_dataset.find_one(
+                {"drugName": {"$regex": f"^{drug_data.drugName}$", "$options": "i"}}
+            )
+
         if dataset_entry:
             is_valid, message, _ = await validate_composition(
                 drug_data.drugName,
