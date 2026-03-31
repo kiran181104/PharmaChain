@@ -5,6 +5,7 @@ Main Application Entry Point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from datetime import datetime
 import logging
 
 from app.config import settings
@@ -118,12 +119,56 @@ async def health_check():
             logger.warning(f"Could not count dataset documents: {str(e)}")
     
     return {
-        "status": "healthy" if db and dataset_count > 0 else "degraded",
+        "status": "healthy" if db and dataset_count > 0 else "degraded" if db else "critical",
         "database": db_status,
         "drug_dataset_seeded": dataset_count > 0,
         "drug_dataset_count": dataset_count,
-        "blockchain": "available"
+        "blockchain": "available",
+        "note": "If database is disconnected, check MONGODB_URL environment variable. If dataset_count is 0, call POST /api/drugs/dataset/seed to initialize."
     }
+
+
+@app.get("/init-check")
+async def initialization_check():
+    """
+    Detailed initialization check for debugging deployment issues
+    """
+    from app.database import get_database, database
+    from app.config import settings
+    
+    db = get_database()
+    
+    check_result = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "app_version": "1.0.0",
+        "database": {
+            "connected": db is not None,
+            "mongodb_url_set": bool(settings.MONGODB_URL),
+            "mongodb_url_preview": settings.MONGODB_URL[:30] + "..." if settings.MONGODB_URL else "NOT SET",
+            "database_name": settings.MONGODB_DB_NAME,
+            "client_available": database.client is not None
+        }
+    }
+    
+    if db:
+        try:
+            dataset_count = await db.drug_composition_dataset.count_documents({})
+            datasets = await db.drug_composition_dataset.find({}).to_list(1)
+            check_result["dataset"] = {
+                "count": dataset_count,
+                "sample": datasets[0].get("drugName") if datasets else None
+            }
+        except Exception as e:
+            check_result["dataset"] = {
+                "error": str(e)
+            }
+    else:
+        check_result["dataset"] = {
+            "count": 0,
+            "error": "Database not connected"
+        }
+    
+    return check_result
 
 
 if __name__ == "__main__":
