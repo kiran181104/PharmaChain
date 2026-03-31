@@ -1,7 +1,9 @@
 .drug-verification {
-  background: #fff;
+  max-width: 960px;
+  margin: 0 auto;
+  background: #ffffff;
   border: 1px solid rgba(95,108,143,0.25);
-  padding: 1.4rem;
+  padding: 1.6rem;
   border-radius: 18px;
   box-shadow: 0 14px 40px rgba(25, 35, 87, 0.12);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -14,9 +16,129 @@
 
 .drug-verification h3 {
   color: #1a2b64;
-  margin-bottom: 1.5rem;
-  font-size: 1.55rem;
+  margin-bottom: 2rem;
+  font-size: 1.68rem;
   letter-spacing: 0.01em;
+}
+
+.drug-verification .verification-input {
+  display: grid;
+  gap: 1rem;
+}
+
+.drug-verification .verification-input label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2f3d79;
+}
+
+.drug-verification .verification-input input {
+  width: 100%;
+  min-width: 240px;
+  border: 1px solid #d1d9ed;
+  border-radius: 10px;
+  padding: 0.72rem 0.95rem;
+  font-size: 1rem;
+  color: #223464;
+}
+
+.drug-verification .verification-input input::placeholder {
+  color: #8a9ac7;
+}
+
+.drug-verification .button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.drug-verification .button-group button {
+  min-width: 160px;
+}
+
+.drug-verification .error-message {
+  color: #b20f0f;
+  background: #fff1f1;
+  border: 1px solid #f2c3c4;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+}
+
+.drug-verification .drug-details-card,
+.drug-verification .verification-result,
+.drug-verification .all-drugs-list {
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  border-radius: 15px;
+  border: 1px solid #e7ebf2;
+  background: #f9fbff;
+}
+
+.drug-verification .drug-details-card h4,
+.drug-verification .verification-result h4,
+.drug-verification .all-drugs-list h4 {
+  margin: 0 0 0.9rem;
+  color: #2d3f79;
+}
+
+.drug-verification .detail-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.7rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #e6ecf5;
+}
+
+.drug-verification .detail-row:last-child {
+  border-bottom: none;
+}
+
+.drug-verification .detail-row .label {
+  font-weight: 600;
+  color: #4252a2;
+}
+
+.drug-verification .detail-row .value {
+  color: #1a2552;
+  text-align: right;
+  word-break: break-all;
+}
+
+.drug-verification .history-record {
+  margin-bottom: 0.85rem;
+  border-radius: 12px;
+  border-left: 4px solid #4b62d1;
+  background: #ffffff;
+  padding: 0.9rem 1rem;
+}
+
+.drug-verification .history-row {
+  font-weight: 600;
+  color: #2b356f;
+  margin-bottom: 0.4rem;
+}
+
+.drug-verification .history-details span {
+  display: inline-block;
+  margin-right: 1rem;
+  color: #58639c;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 1050px) {
+  .drug-verification {
+    padding: 1.25rem;
+  }
+
+  .drug-verification .detail-row {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+
+  .drug-verification .detail-row .value {
+    text-align: left;
+  }
 }
 
 .loading, .error-message {

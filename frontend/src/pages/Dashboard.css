@@ -1,14 +1,42 @@
 .container {
   max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 2rem;
+  margin: 2.5rem auto;
+  padding: 0 1.5rem;
 }
 
 .dashboard {
-  background: white;
-  border-radius: 15px;
+  background: linear-gradient(120deg, #ffffff 0%, #f8f9ff 70%, #f0f5fe 100%);
+  border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 15px 35px rgba(32, 51, 95, 0.12);
+  border: 1px solid rgba(121, 140, 191, 0.2);
+}
+
+.dashboard h2 {
+  color: #1a2e78;
+  margin-bottom: 0.35rem;
+  font-size: 2rem;
+}
+
+.dashboard-subtitle {
+  color: #4c5a9d;
+  margin-bottom: 1.8rem;
+  font-size: 1.08rem;
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin: 1rem auto;
+    padding: 0 1rem;
+  }
+
+  .dashboard {
+    padding: 1.2rem;
+  }
+
+  .dashboard h2 {
+    font-size: 1.65rem;
+  }
 }
 
 .dashboard h2 {
