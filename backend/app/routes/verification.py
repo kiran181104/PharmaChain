@@ -101,7 +101,13 @@ async def verify_drug(batch_id: str, db=Depends(get_database)):
         # Get ownership history
         history_result = await blockchain_service.get_drug_history(batch_id)
         ownership_history = history_result.get("history", []) if history_result.get("success") else []
+        formatted_history = []
         
+        # If the chain includes an initial none -> manufacturer jump, remove that record for display, since actual ownership starts from manufacturer.
+        # Keep only transfers between real roles for end-user view.
+        if ownership_history and ownership_history[0].get("fromRole") == "NONE" and ownership_history[0].get("toRole") == "MANUFACTURER":
+            ownership_history = ownership_history[1:]
+
         # Get composition from MongoDB
         composition_data = await db.drug_composition_storage.find_one({"batchId": batch_id})
         
@@ -203,11 +209,15 @@ async def get_ownership_history(batch_id: str):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Batch ID not found or history unavailable"
             )
-        
+
+        history = history_result.get("history", [])
+        if history and history[0].get("fromRole") == "NONE" and history[0].get("toRole") == "MANUFACTURER":
+            history = history[1:]
+
         return {
             "success": True,
             "batchId": batch_id,
-            "history": history_result.get("history", [])
+            "history": history
         }
         
     except HTTPException:
