@@ -57,6 +57,9 @@ class BlockchainService:
                 self._load_contract()
             
         except Exception as e:
+            logger.warning(f"Blockchain initialization error: {str(e)} - service will be unavailable")
+            self.w3 = None
+
     def is_connected(self) -> bool:
         """Check if blockchain connection is available"""
         return self.w3 is not None and self.contract is not None
@@ -65,9 +68,6 @@ class BlockchainService:
         """Ensure blockchain connection is available, raise error if not"""
         if not self.is_connected():
             raise ConnectionError("Blockchain service is not available. Please check blockchain provider configuration.")
-
-    
-    def _load_contract(self):
         """Load smart contract ABI and create contract instance"""
         try:
             # Contract ABI (simplified - load from file in production)
