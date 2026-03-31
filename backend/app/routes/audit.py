@@ -120,8 +120,8 @@ async def get_drugs_with_anomalies(db=Depends(get_database)):
                 if verification.get("success"):
                     transfer_count = verification.get("transferCount", 0)
                     
-                    # Check for incomplete chain
-                    if transfer_count < 2 and not has_anomaly:
+                    # Check for incomplete chain (but only if batch has been transferred at least once)
+                    if transfer_count > 0 and transfer_count < 2 and not has_anomaly:
                         has_anomaly = True
                         anomaly_type = "Incomplete ownership chain"
                     
@@ -140,6 +140,14 @@ async def get_drugs_with_anomalies(db=Depends(get_database)):
                     error_msg = verification.get("error", "")
                     if "service unavailable" in error_msg.lower() or "cannot connect" in error_msg.lower() or "connection" in error_msg.lower():
                         logger.info(f"Blockchain unavailable, skipping anomaly for {batch_id}: {error_msg}")
+                        continue
+
+                    # Skip newly registered batches (not yet on blockchain) - only flag as anomaly if they should exist on blockchain
+                    # Check if batch has been transferred (should have records in ownership history)
+                    batch_record = await db.drug_batches.find_one({"batchId": batch_id})
+                    if batch_record and batch_record.get("transferCount", 0) == 0:
+                        # Batch exists but hasn't been transferred yet - this is normal, skip it
+                        logger.info(f"Batch {batch_id} is newly registered with no transfers, skipping anomaly")
                         continue
 
                     anomalous_drugs.append({
