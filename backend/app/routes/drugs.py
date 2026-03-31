@@ -342,7 +342,7 @@ async def register_drug(
         await db.drug_composition_storage.insert_one(composition_doc)
         
         # Store batch master record
-        await db.drug_batches.insert_one({
+        batch_record = {
             "batchId": drug_data.batchId,
             "drugName": drug_data.drugName,
             "manufacturer": drug_data.manufacturerAddress.lower(),
@@ -353,7 +353,12 @@ async def register_drug(
             "createdAt": datetime.utcnow(),
             "updatedAt": datetime.utcnow(),
             "blockchainRegistered": blockchain_available
-        })
+        }
+
+        await db.drug_batches.insert_one(batch_record)
+
+        # Maintain legacy batches collection for compatibility and debugging
+        await db.batches.insert_one(batch_record)
 
         
         logger.info(f"Drug registered: {drug_data.batchId} by {drug_data.manufacturerAddress} (blockchain: {blockchain_available})")
